@@ -44,29 +44,37 @@ public class WebMvcConfigurer extends WebMvcConfigurerAdapter {
 
     private final Logger logger = LoggerFactory.getLogger(WebMvcConfigurer.class);
     @Value("${spring.profiles.active}")
-    private String env;//当前激活的配置文件
+    private String env;
 
-    //使用阿里 FastJson 作为JSON MessageConverter
+    /**
+     *     使用阿里 FastJson 作为JSON MessageConverter
+     */
     @Override
     public void configureMessageConverters(List<HttpMessageConverter<?>> converters) {
         FastJsonHttpMessageConverter converter = new FastJsonHttpMessageConverter();
         FastJsonConfig config = new FastJsonConfig();
-        config.setSerializerFeatures(SerializerFeature.WriteMapNullValue);//保留空的字段
+        config.setSerializerFeatures(SerializerFeature.WriteMapNullValue);
+        //保留空的字段
         //SerializerFeature.WriteNullStringAsEmpty,//String null -> ""
         //SerializerFeature.WriteNullNumberAsZero//Number null -> 0
         // 按需配置，更多参考FastJson文档哈
 
         converter.setFastJsonConfig(config);
         converter.setDefaultCharset(Charset.forName("UTF-8"));
-        converter.setSupportedMediaTypes(Arrays.asList(MediaType.APPLICATION_JSON_UTF8));
+        converter.setSupportedMediaTypes(Collections.singletonList(MediaType.APPLICATION_JSON_UTF8));
         converters.add(converter);
     }
 
 
-    //统一异常处理
+
+    /**
+     * 统一异常处理
+     * @param exceptionResolvers
+     */
     @Override
     public void configureHandlerExceptionResolvers(List<HandlerExceptionResolver> exceptionResolvers) {
         exceptionResolvers.add(new HandlerExceptionResolver() {
+            @Override
             public ModelAndView resolveException(HttpServletRequest request, HttpServletResponse response, Object handler, Exception e) {
                 Result result = new Result();
                 if (e instanceof ServiceException) {//业务失败的异常，如“账号或密码错误”
@@ -98,17 +106,22 @@ public class WebMvcConfigurer extends WebMvcConfigurerAdapter {
         });
     }
 
-    //解决跨域问题
+    /**
+     * 解决跨域问题
+     */
     @Override
     public void addCorsMappings(CorsRegistry registry) {
         //registry.addMapping("/**");
     }
 
-    //添加拦截器
+    /**
+     * 添加拦截器
+     */
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
         //接口签名认证拦截器，该签名认证比较简单，实际项目中可以使用Json Web Token或其他更好的方式替代。
-        if (!"dev".equals(env)) { //开发环境忽略签名认证
+        //开发环境忽略签名认证
+        if (!"dev".equals(env)) {
             registry.addInterceptor(new HandlerInterceptorAdapter() {
                 @Override
                 public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
@@ -148,25 +161,31 @@ public class WebMvcConfigurer extends WebMvcConfigurerAdapter {
      * 3. 混合密钥（secret）进行md5获得签名，与请求的签名进行比较
      */
     private boolean validateSign(HttpServletRequest request) {
-        String requestSign = request.getParameter("sign");//获得请求签名，如sign=19e907700db7ad91318424a97c54ed57
+        //获得请求签名，如sign=19e907700db7ad91318424a97c54ed57
+        String requestSign = request.getParameter("sign");
         if (StringUtils.isEmpty(requestSign)) {
             return false;
         }
+        //排除sign参数
         List<String> keys = new ArrayList<String>(request.getParameterMap().keySet());
-        keys.remove("sign");//排除sign参数
-        Collections.sort(keys);//排序
+        keys.remove("sign");
+        //排序
+        Collections.sort(keys);
 
         StringBuilder sb = new StringBuilder();
         for (String key : keys) {
-            sb.append(key).append("=").append(request.getParameter(key)).append("&");//拼接字符串
+            //拼接字符串
+            sb.append(key).append("=").append(request.getParameter(key)).append("&");
         }
         String linkString = sb.toString();
-        linkString = StringUtils.substring(linkString, 0, linkString.length() - 1);//去除最后一个'&'
-
-        String secret = "Potato";//密钥，自己修改
-        String sign = DigestUtils.md5Hex(linkString + secret);//混合密钥md5
-
-        return StringUtils.equals(sign, requestSign);//比较
+        //去除最后一个'&'
+        linkString = StringUtils.substring(linkString, 0, linkString.length() - 1);
+        //密钥，自己修改
+        String secret = "Potato";
+        //混合密钥md5
+        String sign = DigestUtils.md5Hex(linkString + secret);
+        //比较
+        return StringUtils.equals(sign, requestSign);
     }
 
     private String getIpAddress(HttpServletRequest request) {
@@ -187,7 +206,7 @@ public class WebMvcConfigurer extends WebMvcConfigurerAdapter {
             ip = request.getRemoteAddr();
         }
         // 如果是多级代理，那么取第一个ip为客户端ip
-        if (ip != null && ip.indexOf(",") != -1) {
+        if (ip != null && ip.contains(",")) {
             ip = ip.substring(0, ip.indexOf(",")).trim();
         }
 

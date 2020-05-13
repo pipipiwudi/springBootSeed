@@ -14,6 +14,7 @@ import javax.annotation.Resource;
 import java.util.List;
 
 /**
+* @author ${author}
 * Created by ${author} on ${date}.
 */
 @RestController
